@@ -9,21 +9,6 @@ LedgerMind is a personal CFO-style analysis engine that:
 
 It currently uses an Actual Budget provider implemented in Python (`actualpy`) for transaction and budget access.
 
-## What It Does
-
-LedgerMind turns prompts like:
-
-- "How did I do last month?"
-- "What recurring charges do I have?"
-- "What should I change this month?"
-
-into a pipeline:
-
-1. Planner selects tool calls
-2. Tool executor runs them
-3. Validator checks results
-4. Answer generator builds a structured response
-
 ## Project Structure
 
 Key directories:

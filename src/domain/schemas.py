@@ -174,11 +174,6 @@ class NumericEvidence(BaseModel):
     assumption: Optional[str] = None
 
 
-class AnswerSummary(BaseModel):
-    headline: str
-    bullets: List[str] = Field(default_factory=list)
-
-
 class AnswerOption(BaseModel):
     id: str
     title: str
@@ -213,13 +208,42 @@ class AnswerTrace(BaseModel):
     validation_targets: List[str] = Field(default_factory=list)
 
 
+class MemoryItem(BaseModel):
+    text: str
+    kind: Literal["preference", "goal", "constraint", "fact", "context", "other"] = "other"
+    source_request_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class LLMAnswerDraft(BaseModel):
+    answer: str
+    bullets: List[str] = Field(default_factory=list)
+    options: List[AnswerOption] = Field(default_factory=list)
+    recommended_action: Optional[RecommendedAction] = None
+    risks_and_tradeoffs: List[str] = Field(default_factory=list)
+    assumptions_and_confidence: Optional[AssumptionsConfidence] = None
+    memory: List[MemoryItem] = Field(default_factory=list)
+    used_tool_calls: List[str] = Field(
+        default_factory=list,
+        description="Tool names from evidence that the model actively used for reasoning.",
+    )
+
+
 class EngineAnswer(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     schema_version: str = Field(default="ledgermind.answer.v1", alias="schema")
-    summary: AnswerSummary
+    answer: str
+    bullets: List[str] = Field(default_factory=list)
     supporting_numbers: List[NumericEvidence] = Field(default_factory=list)
     options: List[AnswerOption] = Field(default_factory=list)
     recommended_action: Optional[RecommendedAction] = None
     risks_and_tradeoffs: List[str] = Field(default_factory=list)
     assumptions_and_confidence: Optional[AssumptionsConfidence] = None
     trace: Optional[AnswerTrace] = None
+    memory: List[MemoryItem] = Field(
+        default_factory=list,
+        description=(
+            "Durable memory entries worth keeping for future answers. Keep concise and only include facts/preferences/"
+            "constraints that should persist across requests."
+        ),
+    )

@@ -69,6 +69,30 @@ class PlannerLLMTests(unittest.TestCase):
         self.assertGreaterEqual(len(plan.calls), 1)
         self.assertTrue(plan.calls[0].tool)
 
+    def test_fallback_plan_uses_valid_preferred_tools_in_order(self) -> None:
+        planner_llm = PlannerLLM(_StubLLMClient("not-json"))
+        preferred = [
+            "detect.recurring_charges",
+            "not.a.tool",
+            "forecast.cashflow_30d",
+        ]
+
+        plan = planner_llm.generate_plan(self._request(), registry.list_specs(), preferred_tool_names=preferred)
+
+        self.assertEqual([call.tool for call in plan.calls], ["detect.recurring_charges", "forecast.cashflow_30d"])
+
+    def test_fallback_plan_uses_first_available_when_no_preferred_valid(self) -> None:
+        planner_llm = PlannerLLM(_StubLLMClient("not-json"))
+
+        plan = planner_llm.generate_plan(
+            self._request(),
+            registry.list_specs(),
+            preferred_tool_names=["missing.one", "missing.two"],
+        )
+
+        self.assertEqual(len(plan.calls), 1)
+        self.assertEqual(plan.calls[0].tool, registry.list_specs()[0].name)
+
     def test_build_prompt_includes_policy_profile(self) -> None:
         planner_llm = PlannerLLM(_StubLLMClient("{}"))
         prompt = planner_llm.build_prompt(self._request(), registry.list_specs())
@@ -109,6 +133,17 @@ class PlannerLLMTests(unittest.TestCase):
         self.assertEqual(len(plan.calls), 1)
         self.assertEqual(plan.calls[0].tool, "ledger.category_summary")
         self.assertEqual(plan.output.response_schema, "ledgermind.v1.decision_response")
+
+    def test_planner_service_passes_preferred_fallback_tools(self) -> None:
+        planner_service = PlannerService(
+            registry=registry,
+            planner_llm=PlannerLLM(_StubLLMClient("not-json")),
+            preferred_fallback_tools=["detect.anomalies", "forecast.cashflow_30d"],
+        )
+
+        plan = planner_service.plan(self._request())
+
+        self.assertEqual([call.tool for call in plan.calls], ["detect.anomalies", "forecast.cashflow_30d"])
 
     def test_sample_plan_schema_validates(self) -> None:
         sample = {

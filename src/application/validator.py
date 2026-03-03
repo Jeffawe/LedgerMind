@@ -46,11 +46,11 @@ class ValidatorService:
             ))
 
         # --- 2) Required content checks ---
-        if not getattr(answer.summary, "headline", ""):
+        if not str(getattr(answer, "answer", "")).strip():
             issues.append(ValidationIssue(
                 code="MISSING_HEADLINE",
                 message="Missing summary headline",
-                path="summary.headline",
+                path="answer",
             ))
 
         if answer.recommended_action is None or not getattr(answer.recommended_action, "title", ""):
@@ -293,15 +293,13 @@ class ValidatorService:
         """
         fields: list[tuple[str, str]] = []
 
-        summary = getattr(answer, "summary", None)
-        if summary:
-            headline = getattr(summary, "headline", "")
-            if headline:
-                fields.append(("summary.headline", headline))
-            bullets = getattr(summary, "bullets", None) or []
-            for i, b in enumerate(bullets):
-                if b:
-                    fields.append((f"summary.bullets[{i}]", b))
+        headline = str(getattr(answer, "answer", "") or "").strip()
+        if headline:
+            fields.append(("answer", headline))
+        bullets = getattr(answer, "bullets", None) or []
+        for i, b in enumerate(bullets):
+            if b:
+                fields.append((f"bullets[{i}]", b))
 
         rec = getattr(answer, "recommended_action", None)
         if rec:

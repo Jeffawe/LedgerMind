@@ -61,18 +61,8 @@ class AnswerLLMTests(unittest.TestCase):
 
     def test_generate_answer_from_valid_llm_json(self) -> None:
         payload = {
-            "schema": "ledgermind.answer.v1",
-            "summary": {"headline": "Headline", "bullets": ["b1"]},
-            "supporting_numbers": [
-                {
-                    "id": "n1",
-                    "label": "Net",
-                    "value": 100.0,
-                    "unit": "USD",
-                    "type": "evidence",
-                    "evidence_ref": {"citation_id": "c1", "path": "data.net"},
-                }
-            ],
+            "answer": "Headline",
+            "bullets": ["b1"],
             "options": [],
             "recommended_action": {
                 "title": "Do X",
@@ -88,25 +78,22 @@ class AnswerLLMTests(unittest.TestCase):
                 "confidence": 0.8,
                 "confidence_reasoning": ["grounded"],
             },
-            "trace": {
-                "plan_id": "plan_001",
-                "tool_calls_used": ["ledger.category_summary"],
-                "validation_targets": ["schema_valid"],
-            },
+            "memory": [],
+            "used_tool_calls": ["ledger.category_summary"],
         }
         llm = AnswerLLM(_StubLLMClient(json.dumps(payload)))
-        answer = llm.generate_answer(self._request(), self._plan(), self._evidence())
+        draft = llm.generate_draft(self._request(), self._plan(), self._evidence())
 
-        self.assertEqual(answer.schema_version, "ledgermind.answer.v1")
-        self.assertEqual(answer.summary.headline, "Headline")
+        self.assertEqual(draft.answer, "Headline")
+        self.assertEqual(draft.bullets, ["b1"])
 
     def test_generate_answer_falls_back_when_invalid(self) -> None:
         llm = AnswerLLM(_StubLLMClient("not-json"))
-        answer = llm.generate_answer(self._request(), self._plan(), self._evidence())
+        draft = llm.generate_draft(self._request(), self._plan(), self._evidence())
 
-        self.assertEqual(answer.schema_version, "ledgermind.answer.v1")
-        self.assertTrue(answer.recommended_action.title)
-        self.assertIn("ledger.category_summary", answer.trace.tool_calls_used)
+        self.assertTrue(draft.answer)
+        self.assertTrue(draft.recommended_action.title)
+        self.assertIn("ledger.category_summary", draft.used_tool_calls)
 
     def test_build_prompt_includes_policy_profile(self) -> None:
         llm = AnswerLLM(_StubLLMClient("{}"))

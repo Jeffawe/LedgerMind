@@ -7,6 +7,7 @@ from statistics import mean
 from typing import Any
 
 from domain.schemas import ToolArgs, ToolRequest, ToolResponse
+from logs import get_logger
 from tools._transactions_support import fetch_transaction_rows
 from tools.base import Tool, ToolSpec
 from tools.registry import register_tool
@@ -78,6 +79,7 @@ class _RecurringBase(Tool):
     description = "Detect likely recurring charges (subscriptions and repeating bills) from recent debit transactions."
 
     def run(self, request: ToolRequest) -> ToolResponse:
+        logger.info("run start request_id=%s tool=%s", request.request_id, self.name)
         rows, filters = fetch_transaction_rows(request, default_days=180)
         result = {
             "detected": _detect(rows),
@@ -98,3 +100,4 @@ class RecurringChargesTool(_RecurringBase):
 @register_tool
 class SubscriptionDetectionToolAlias(_RecurringBase):
     name = "detect.subscriptions"
+logger = get_logger("Tool:detect.recurring_charges")

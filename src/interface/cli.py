@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from requests.sessions import preferred_clock
+
 from application.answer import AnswerService
 from application.engine import LedgerMindEngine
 from application.planner import PlannerService
@@ -14,8 +16,10 @@ from tools.registry import registry
 def build_engine() -> LedgerMindEngine:
     import tools  # noqa: F401
 
+    preferred_tools = ["ledgers.month_summary", "ledgers.month_summary", "forecast.cashflow_30d", "detect.anomalies"]
+
     return LedgerMindEngine(
-        planner=PlannerService(registry=registry),
+        planner=PlannerService(registry=registry, preferred_fallback_tools=preferred_tools),
         tool_executor=ToolExecutor(registry),
         answer_service=AnswerService(),
         validator=ValidatorService(),

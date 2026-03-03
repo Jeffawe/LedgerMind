@@ -5,6 +5,7 @@ from statistics import mean
 from typing import Any
 
 from domain.schemas import ToolArgs, ToolRequest, ToolResponse
+from logs import get_logger
 from tools._transactions_support import fetch_transaction_rows
 from tools.base import Tool, ToolSpec
 from tools.registry import register_tool
@@ -16,6 +17,7 @@ class DetectAnomaliesTool(Tool):
     description = "Flag unusually large transactions compared with the user's recent history by category."
 
     def run(self, request: ToolRequest) -> ToolResponse:
+        logger.info("run start request_id=%s", request.request_id)
         rows, filters = fetch_transaction_rows(request, default_days=120)
         debit_rows = [r for r in rows if r.get("txn_type") != "credit"]
 
@@ -65,3 +67,4 @@ class DetectAnomaliesTool(Tool):
 
     def spec(self) -> ToolSpec:
         return ToolSpec(name=self.name, description=self.description, args_schema=ToolArgs.model_json_schema())
+logger = get_logger("Tool:detect.anomalies")

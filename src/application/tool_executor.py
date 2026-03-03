@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import logging
 import time
 
 from domain.schemas import LedgerMindPlan, ToolContext, ToolRequest, ToolResponse, UserRequest
+from logs import get_logger
 from tools.registry import ToolRegistry
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ToolExecutor")
 
 
 class ToolExecutor:

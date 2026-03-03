@@ -4,8 +4,11 @@ from typing import Any
 
 from domain.schemas import ToolRequest, ToolResponse
 from infrastructure.policy_profile.profile import PolicyProfileStore
+from logs import get_logger
 from tools.base import Tool, ToolSpec
 from tools.registry import register_tool
+
+logger = get_logger("Tool:policy.check_recommendation")
 
 
 @register_tool
@@ -17,6 +20,7 @@ class PolicyCheckRecommendationTool(Tool):
         self._profiles = PolicyProfileStore()
 
     def run(self, request: ToolRequest) -> ToolResponse:
+        logger.info("run start request_id=%s", request.request_id)
         args = request.args if isinstance(request.args, dict) else {}
         recommendation = args.get("recommendation")
         rec_text = recommendation if isinstance(recommendation, str) else str(recommendation or "")
@@ -98,4 +102,3 @@ class PolicyCheckRecommendationTool(Tool):
                 "required": ["recommendation"],
             },
         )
-

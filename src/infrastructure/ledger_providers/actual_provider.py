@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 import sys
 from datetime import date
@@ -13,8 +12,9 @@ from domain.actual_schemas import ActualBudgetMonth
 from domain.models import Money, Transaction, TransactionType
 from domain.schemas import TransactionQuery
 from infrastructure.ledger_providers.provider import Provider
+from logs import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ActualProvider")
 
 
 class ActualProviderError(RuntimeError):

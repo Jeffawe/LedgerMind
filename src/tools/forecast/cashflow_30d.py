@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from domain.schemas import ToolArgs, ToolRequest, ToolResponse
+from logs import get_logger
 from tools._transactions_support import fetch_transaction_rows
 from tools.base import Tool, ToolSpec
 from tools.registry import register_tool
@@ -16,6 +17,7 @@ class Cashflow30dForecastTool(Tool):
     description = "Project net cashflow over the next 30 days using recent daily income/spend patterns."
 
     def run(self, request: ToolRequest) -> ToolResponse:
+        logger.info("run start request_id=%s", request.request_id)
         rows, filters = fetch_transaction_rows(request, default_days=90)
         daily_net: dict[str, float] = defaultdict(float)
         debit_total = 0.0
@@ -68,3 +70,4 @@ class Cashflow30dForecastTool(Tool):
 
     def spec(self) -> ToolSpec:
         return ToolSpec(name=self.name, description=self.description, args_schema=ToolArgs.model_json_schema())
+logger = get_logger("Tool:forecast.cashflow_30d")

@@ -6,6 +6,7 @@ from datetime import date
 from typing import Any
 
 from domain.schemas import ToolRequest, ToolResponse, TransactionQuery
+from logs import get_logger
 from tools._transactions_support import _extract_request_filters, fetch_transaction_rows, set_month_date_range
 from tools.base import Tool, ToolSpec
 from tools.registry import register_tool
@@ -27,6 +28,7 @@ class MonthSummaryTool(Tool):
     )
 
     def run(self, request: ToolRequest) -> ToolResponse:
+        logger.info("run start request_id=%s", request.request_id)
         args = request.args if isinstance(request.args, dict) else {}
         month_number = _as_int(args.get("month_number") or args.get("month"))
         year = _as_int(args.get("year")) or date.today().year
@@ -96,3 +98,4 @@ class MonthSummaryTool(Tool):
                 "required": ["month_number"],
             },
         )
+logger = get_logger("Tool:ledgers.month_summary")

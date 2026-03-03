@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import time
 
 from application.answer import AnswerService
@@ -8,8 +7,9 @@ from application.planner import PlannerService
 from application.tool_executor import ToolExecutor
 from application.validator import ValidationIssue, ValidatorService
 from domain.schemas import EngineAnswer, UserRequest
+from logs import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger("Engine")
 
 
 class LedgerMindEngine:

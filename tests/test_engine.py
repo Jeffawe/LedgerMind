@@ -34,7 +34,7 @@ class LedgerMindEngineTests(unittest.TestCase):
         answer, issues = engine.run(request)
 
         self.assertEqual(answer.schema_version, "ledgermind.answer.v1")
-        self.assertTrue(answer.summary.headline)
+        self.assertTrue(answer.answer)
         self.assertIn("ledger.category_summary", answer.trace.tool_calls_used)
         self.assertGreaterEqual(len(answer.options), 2)
         self.assertTrue(answer.recommended_action.title)

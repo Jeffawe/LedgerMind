@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import Any
 
 from domain.schemas import ToolArgs, ToolRequest, ToolResponse
+from logs import get_logger
 from tools._transactions_support import fetch_transaction_rows
 from tools.base import Tool, ToolSpec
 from tools.registry import register_tool
@@ -45,9 +46,11 @@ def _build_category_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 class _CategorySummaryBase(Tool):
+    name = "ledgers.category_summary"
     description = "Summarize spend/income totals grouped by category for the filtered transaction date range."
 
     def run(self, request: ToolRequest) -> ToolResponse:
+        logger.info("run start request_id=%s", request.request_id)
         rows, filters = fetch_transaction_rows(request, default_days=30)
         result = _build_category_summary(rows)
         result["filters_used"] = filters
@@ -71,3 +74,4 @@ class CategorySummaryToolLegacy(_CategorySummaryBase):
 @register_tool
 class CategorySummaryTool(_CategorySummaryBase):
     name = "ledgers.category_summary"
+logger = get_logger("Tool:ledgers.category_summary")

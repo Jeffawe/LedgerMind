@@ -1,0 +1,10 @@
+# Core runtime
+pydantic>=2,<3
+python-dotenv>=1.0,<2
+fastapi>=0.110,<1
+uvicorn>=0.29,<1
+
+# Actual Budget Python integration
+# Pinned for Python 3.9 compatibility used in this project setup
+actualpy==0.17.0
+

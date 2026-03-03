@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 import socket
 import time
 import urllib.error
 import urllib.request
+from logs import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger("LLMClient")
 
 class LLMClient:
     def __init__(

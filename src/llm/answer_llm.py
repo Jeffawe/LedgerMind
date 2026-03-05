@@ -120,7 +120,7 @@ class AnswerLLM:
     ) -> LLMAnswerDraft:
         logger.info("AnswerLLM generate_draft start plan_calls=%d evidence=%d policy_profile=%s", len(plan.calls), len(evidence), request.context.policy_profile)
         prompt = self.build_prompt(request, plan, evidence, memory_context=memory_context)
-        raw = self._llm.complete(prompt).strip()
+        raw = self._llm.complete(prompt, caller="AnswerLLM", request_id=request.request_id).strip()
 
         if raw:
             draft = self._try_parse_draft(raw)
@@ -129,7 +129,11 @@ class AnswerLLM:
                 return draft
 
             logger.info("AnswerLLM retrying once with JSON repair prompt")
-            retry_raw = self._llm.complete(self._build_retry_prompt(prompt, raw)).strip()
+            retry_raw = self._llm.complete(
+                self._build_retry_prompt(prompt, raw),
+                caller="AnswerLLM",
+                request_id=request.request_id,
+            ).strip()
             if retry_raw:
                 draft = self._try_parse_draft(retry_raw)
                 if draft is not None:

@@ -1,14 +1,19 @@
 # LedgerMind
 
-LedgerMind is a personal CFO-style analysis engine that:
+LedgerMind is a personal CFO-style financial analysis engine that turns raw transaction data into grounded financial insights and actionable recommendations.
 
-- plans tool calls from a user question
-- runs deterministic finance tools against normalized transaction data
-- validates the outputs
-- generates a structured answer
+LedgerMind answers personal finance questions like:
 
-It currently uses an Actual Budget provider implemented in Python (`actualpy`) for transaction and budget access.
+“How did I do last month and what should I change?”
 
+Instead of relying on free-form LLM responses, LedgerMind plans and executes deterministic financial tools against normalized transaction and budget data, then generates a structured answer backed by verifiable evidence.
+
+LedgerMind focuses on **reliable AI-assisted financial analysis** through:
+
+- **Tool-first architecture** for deterministic financial calculations  
+- **Structured outputs with citations** linking insights to source data  
+- **Validation layers** that detect unsupported numbers or assumptions  
+- **Local-first model execution** using locally hosted LLMs
 ## Project Structure
 
 Key directories:

@@ -141,7 +141,7 @@ class PlannerLLM:
 
         logger.info("PlannerLLM generate_plan start tools=%d policy_profile=%s", len(tools), request.context.policy_profile)
         prompt = self.build_prompt(request, tools)
-        raw = self._llm.complete(prompt).strip()
+        raw = self._llm.complete(prompt, caller="PlannerLLM", request_id=request.request_id).strip()
 
         if not raw:
             logger.info("PlannerLLM empty response; using fallback plan")
@@ -150,7 +150,11 @@ class PlannerLLM:
         parsed = self._try_parse_plan(raw)
         if parsed is None:
             logger.info("PlannerLLM retrying once with JSON repair prompt")
-            retry_raw = self._llm.complete(self._build_retry_prompt(prompt, raw)).strip()
+            retry_raw = self._llm.complete(
+                self._build_retry_prompt(prompt, raw),
+                caller="PlannerLLM",
+                request_id=request.request_id,
+            ).strip()
             if retry_raw:
                 parsed = self._try_parse_plan(retry_raw)
             if parsed is None:
@@ -234,9 +238,16 @@ class PlannerLLM:
         )
 
     def _fallback_args_for_tool(self, tool_name: str, start: str, end: str) -> dict:
+        start_dt = date.fromisoformat(start)
         if tool_name == "policy.check_recommendation":
             return {
                 "recommendation": "Reduce discretionary spend while preserving cash buffer and essential obligations."
+            }
+        if tool_name == "ledgers.month_summary":
+            return {
+                "month_number": start_dt.month,
+                "year": start_dt.year,
+                "exclude_transfers": True,
             }
         return {
             "date_range": {"start": start, "end": end},

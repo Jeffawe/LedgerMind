@@ -1,0 +1,169 @@
+{
+  "ts": "2026-03-04T18:41:44Z",
+  "name": "Engine",
+  "message": "evidence_snapshot",
+  "request_id": "req_web_001",
+  "payload": {
+    "request": {
+      "request_id": "req_web_001",
+      "user_id": "u_123",
+      "message": "How did I do last month and what should I change?",
+      "context": {
+        "timezone": "America/New_York",
+        "policy_profile": "default_v1"
+      }
+    },
+    "plan": {
+      "schema": "ledgermind.plan.v1",
+      "objective": "Generate a grounded financial performance review and improvements plan",
+      "assumptions": {
+        "date_range": {
+          "start": "2026-03-01",
+          "end": "2026-03-04"
+        },
+        "currency": "USD"
+      },
+      "calls": [
+        {
+          "id": "s1",
+          "tool": "ledgers.month_summary",
+          "args": {
+            "month_number": 3,
+            "year": 2026,
+            "exclude_transfers": true
+          },
+          "purpose": "Summarize monthly spending, income, and net cashflow"
+        },
+        {
+          "id": "s2",
+          "tool": "forecast.cashflow_30d",
+          "args": {
+            "date_range": {
+              "start": "2026-03-01",
+              "end": "2026-03-04"
+            },
+            "exclude_transfers": true
+          },
+          "purpose": "Project near-term cashflow from recent patterns"
+        },
+        {
+          "id": "s3",
+          "tool": "detect.anomalies",
+          "args": {
+            "date_range": {
+              "start": "2026-03-01",
+              "end": "2026-03-04"
+            },
+            "exclude_transfers": true
+          },
+          "purpose": "Find unusually large or irregular transactions"
+        }
+      ],
+      "output": {
+        "response_schema": "ledgermind.v1.decision_response",
+        "focus": [
+          "spend_reduction",
+          "cash_buffer"
+        ]
+      }
+    },
+    "evidence": [
+      {
+        "request_id": "req_web_001:s1",
+        "tool": "ledgers.month_summary",
+        "ok": true,
+        "result": {
+          "year": 2026,
+          "month_number": 3,
+          "month_name": "March",
+          "transaction_count": 1,
+          "debit_total": 0.53,
+          "credit_total": 0,
+          "net_cashflow": -0.53,
+          "top_debit_categories": [
+            {
+              "category": "c4dd9850-43a5-4c08-bafd-dfe7359cbd68",
+              "debit_total": 0.53
+            }
+          ],
+          "filters_used": {
+            "date_range": {
+              "start": "2026-03-01",
+              "end": "2026-03-31"
+            },
+            "providers": [],
+            "provider_names": [],
+            "accounts": [],
+            "categories": [],
+            "exclude_transfers": true
+          }
+        },
+        "errors": [],
+        "context": {
+          "user_id": "u_123",
+          "ledger_id": "ldg_main",
+          "timezone": "America/New_York",
+          "policy_profile": "default_v1"
+        }
+      },
+      {
+        "request_id": "req_web_001:s2",
+        "tool": "forecast.cashflow_30d",
+        "ok": true,
+        "result": {
+          "lookback_days": 4,
+          "lookback_transaction_count": 1,
+          "avg_daily_net": -0.13,
+          "avg_daily_spend": 0.13,
+          "avg_daily_income": 0.0,
+          "projected_30d": {
+            "start": "2026-03-05",
+            "end": "2026-04-03",
+            "net_cashflow": -3.98,
+            "spend": 3.98,
+            "income": 0.0
+          },
+          "method": "simple trailing average over lookback window (default 90 days)",
+          "filters_used": {
+            "date_range": {
+              "start": "2026-03-01",
+              "end": "2026-03-04"
+            },
+            "exclude_transfers": true
+          }
+        },
+        "errors": [],
+        "context": {
+          "user_id": "u_123",
+          "ledger_id": "ldg_main",
+          "timezone": "America/New_York",
+          "policy_profile": "default_v1"
+        }
+      },
+      {
+        "request_id": "req_web_001:s3",
+        "tool": "detect.anomalies",
+        "ok": true,
+        "result": {
+          "anomalies": [],
+          "transaction_count": 1,
+          "analyzed_debits": 1,
+          "filters_used": {
+            "date_range": {
+              "start": "2026-03-01",
+              "end": "2026-03-04"
+            },
+            "exclude_transfers": true
+          }
+        },
+        "errors": [],
+        "context": {
+          "user_id": "u_123",
+          "ledger_id": "ldg_main",
+          "timezone": "America/New_York",
+          "policy_profile": "default_v1"
+        }
+      }
+    ]
+  }
+}

@@ -93,6 +93,19 @@ class PlannerLLMTests(unittest.TestCase):
         self.assertEqual(len(plan.calls), 1)
         self.assertEqual(plan.calls[0].tool, registry.list_specs()[0].name)
 
+    def test_fallback_month_summary_gets_required_month_args(self) -> None:
+        planner_llm = PlannerLLM(_StubLLMClient("not-json"))
+        plan = planner_llm.generate_plan(
+            self._request(),
+            registry.list_specs(),
+            preferred_tool_names=["ledgers.month_summary"],
+        )
+
+        self.assertEqual(len(plan.calls), 1)
+        self.assertEqual(plan.calls[0].tool, "ledgers.month_summary")
+        self.assertIn("month_number", plan.calls[0].args)
+        self.assertIn("year", plan.calls[0].args)
+
     def test_build_prompt_includes_policy_profile(self) -> None:
         planner_llm = PlannerLLM(_StubLLMClient("{}"))
         prompt = planner_llm.build_prompt(self._request(), registry.list_specs())

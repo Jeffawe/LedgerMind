@@ -43,6 +43,20 @@ def resolve_data_dir() -> Path:
     return data_dir
 
 
+def _base_url_candidates(base_url: str) -> list[str]:
+    base = base_url.rstrip("/")
+    candidates = [base]
+    # Some deployments proxy Actual API under /api.
+    if not base.endswith("/api"):
+        candidates.append(f"{base}/api")
+    return candidates
+
+
+def _is_data_index_404(exc: Exception) -> bool:
+    message = str(exc)
+    return "data-file-index.txt" in message and "404" in message
+
+
 @contextmanager
 def open_actual_client():
     load_repo_dotenv()
@@ -60,29 +74,68 @@ def open_actual_client():
     data_dir = resolve_data_dir()
     encryption_password = os.getenv("ACTUAL_BUDGET_ENCRYPTION_PASSWORD")
 
-    log(f"[actual-py] init server={base_url} dataDir={data_dir}")
-
-    kwargs: dict[str, Any] = {
-        "base_url": base_url,
-        "password": password,
-        "file": file_ref,
-        "data_dir": data_dir,
-    }
-    if encryption_password:
-        # actualpy versions have used different keyword names; try common variants.
-        for key in ("encryption_password", "file_password"):
-            try_kwargs = dict(kwargs)
-            try_kwargs[key] = encryption_password
-            try:
-                with Actual(**try_kwargs) as actual:
-                    yield actual
-                    return
-            except TypeError:
+    last_exc: Exception | None = None
+    for candidate_base_url in _base_url_candidates(base_url):
+        log(f"[actual-py] init server={candidate_base_url} dataDir={data_dir}")
+        kwargs: dict[str, Any] = {
+            "base_url": candidate_base_url,
+            "password": password,
+            "file": file_ref,
+            "data_dir": data_dir,
+        }
+        if encryption_password:
+            # actualpy versions have used different keyword names; try common variants.
+            for key in ("encryption_password", "file_password"):
+                try_kwargs = dict(kwargs)
+                try_kwargs[key] = encryption_password
+                try:
+                    with Actual(**try_kwargs) as actual:
+                        yield actual
+                        return
+                except TypeError:
+                    continue
+                except Exception as exc:
+                    last_exc = exc
+                    if _is_data_index_404(exc) and not candidate_base_url.endswith("/api"):
+                        log("[actual-py] data-file-index 404; retrying with /api base path")
+                        break
+                    raise _rewrite_actual_connection_error(exc, candidate_base_url) from exc
+            else:
+                log(
+                    "[actual-py] encryption password provided, but constructor keyword was not recognized; retrying without it"
+                )
+            if last_exc is not None and _is_data_index_404(last_exc) and not candidate_base_url.endswith("/api"):
                 continue
-        log("[actual-py] encryption password provided, but constructor keyword was not recognized; retrying without it")
 
-    with Actual(**kwargs) as actual:
-        yield actual
+        try:
+            with Actual(**kwargs) as actual:
+                yield actual
+                return
+        except Exception as exc:
+            last_exc = exc
+            if _is_data_index_404(exc) and not candidate_base_url.endswith("/api"):
+                log("[actual-py] data-file-index 404; retrying with /api base path")
+                continue
+            raise _rewrite_actual_connection_error(exc, candidate_base_url) from exc
+
+    if last_exc is not None:
+        raise _rewrite_actual_connection_error(last_exc, base_url) from last_exc
+    raise RuntimeError("Unable to initialize Actual client")
+
+
+def _rewrite_actual_connection_error(exc: Exception, base_url: str) -> RuntimeError:
+    message = str(exc)
+    if "data-file-index.txt" in message and "404" in message:
+        candidate = base_url.rstrip("/")
+        alt_hint = ""
+        if candidate.endswith(":5007"):
+            alt_hint = f" Try '{candidate[:-5]}:5006' if that is your Actual server."
+        return RuntimeError(
+            "Actual server responded with 404 for '/data-file-index.txt'. "
+            f"Check ACTUAL_SERVER_URL in your runtime environment (currently '{base_url}')."
+            + alt_hint
+        )
+    return RuntimeError(message)
 
 
 def json_default(obj: Any) -> Any:
@@ -135,4 +188,3 @@ def normalize_query_result(result: Any) -> list[Any]:
             return list(result[0])
         return result
     return [result] if result is not None else []
-

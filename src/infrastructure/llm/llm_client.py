@@ -6,7 +6,7 @@ import socket
 import time
 import urllib.error
 import urllib.request
-from logs import get_logger
+from logs import get_logger, write_json_log
 
 logger = get_logger("LLMClient")
 
@@ -21,7 +21,7 @@ class LLMClient:
         self.model = model or os.getenv("OLLAMA_MODEL", "llama3.1:8b")
         self.timeout_seconds = timeout_seconds or float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "60"))
 
-    def complete(self, prompt: str) -> str:
+    def complete(self, prompt: str, *, caller: str = "LLMClient", request_id: str | None = None) -> str:
         started = time.perf_counter()
         payload = {
             "model": self.model,
@@ -46,15 +46,46 @@ class LLMClient:
                 len(prompt),
                 self.timeout_seconds,
             )
+            write_json_log(
+                name=caller,
+                message="llm_prompt",
+                payload={
+                    "model": self.model,
+                    "base_url": self.base_url,
+                    "timeout_seconds": self.timeout_seconds,
+                    "prompt": prompt,
+                },
+                request_id=request_id,
+            )
             with urllib.request.urlopen(req, timeout=self.timeout_seconds) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
         except (socket.timeout, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
             elapsed = time.perf_counter() - started
             logger.warning("LLMClient request failed after %.2fs: %s", elapsed, exc)
+            write_json_log(
+                name=caller,
+                message="llm_error",
+                payload={
+                    "model": self.model,
+                    "base_url": self.base_url,
+                    "error": str(exc),
+                },
+                request_id=request_id,
+            )
             # Fail-soft: planner/answer layers already have deterministic fallbacks.
             return ""
 
         response_text = body.get("response", "")
         elapsed = time.perf_counter() - started
+        write_json_log(
+            name=caller,
+            message="llm_response",
+            payload={
+                "model": self.model,
+                "elapsed_seconds": round(elapsed, 3),
+                "response": response_text,
+            },
+            request_id=request_id,
+        )
         logger.info("LLMClient request complete in %.2fs response_chars=%d", elapsed, len(str(response_text)))
         return response_text.strip() if isinstance(response_text, str) else ""

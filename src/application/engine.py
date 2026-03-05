@@ -6,8 +6,8 @@ from application.answer import AnswerService
 from application.planner import PlannerService
 from application.tool_executor import ToolExecutor
 from application.validator import ValidationIssue, ValidatorService
-from domain.schemas import EngineAnswer, UserRequest
-from logs import get_logger
+from domain.schemas import EngineAnswer, ToolResponse, UserRequest
+from logs import get_logger, write_json_log
 
 logger = get_logger("Engine")
 
@@ -36,6 +36,7 @@ class LedgerMindEngine:
         t = time.perf_counter()
         evidence = self._tool_executor.run_calls(plan, request)
         logger.info("Tool execution complete in %.2fs responses=%d", time.perf_counter() - t, len(evidence))
+        self._dump_evidence_snapshot(request, plan.model_dump(by_alias=True), evidence)
 
         t = time.perf_counter()
         answer = self._answer_service.compose(request, plan, evidence)
@@ -47,3 +48,18 @@ class LedgerMindEngine:
 
         logger.info("Engine run complete in %.2fs", time.perf_counter() - t0)
         return answer, issues
+
+    def _dump_evidence_snapshot(self, request: UserRequest, plan_payload: dict, evidence: list[ToolResponse]) -> None:
+        payload = {
+            "request": request.model_dump(mode="json"),
+            "plan": plan_payload,
+            "evidence": [item.model_dump(mode="json") for item in evidence],
+        }
+        output_path = write_json_log(
+            name="Engine",
+            message="evidence_snapshot",
+            payload=payload,
+            request_id=request.request_id,
+        )
+        if output_path is not None:
+            logger.info("Engine evidence snapshot written path=%s entries=%d", output_path, len(evidence))

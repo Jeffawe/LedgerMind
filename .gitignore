@@ -8,6 +8,8 @@ __pycache__/
 .coverage
 .coverage.*
 htmlcov/
+logs/
+memory/memory.json
 
 # Virtual environments
 .venv/

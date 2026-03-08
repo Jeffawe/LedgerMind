@@ -22,28 +22,6 @@ from logs import get_logger
 logger = get_logger("AnswerLLM")
 
 
-def _extract_json_candidate(raw: str) -> str:
-    text = raw.strip()
-    if not text:
-        return text
-
-    if "```" in text:
-        fence_start = text.find("```")
-        fence_end = text.find("```", fence_start + 3)
-        if fence_end != -1:
-            fenced = text[fence_start + 3:fence_end].strip()
-            if fenced.lower().startswith("json"):
-                fenced = fenced[4:].strip()
-            if fenced:
-                return fenced
-
-    start = text.find("{")
-    end = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        return text[start:end + 1]
-    return text
-
-
 class AnswerLLM:
     """Builds answer-generation prompts and parses compact answer drafts from the LLM."""
 
@@ -120,30 +98,19 @@ class AnswerLLM:
     ) -> LLMAnswerDraft:
         logger.info("AnswerLLM generate_draft start plan_calls=%d evidence=%d policy_profile=%s", len(plan.calls), len(evidence), request.context.policy_profile)
         prompt = self.build_prompt(request, plan, evidence, memory_context=memory_context)
-        raw = self._llm.complete(prompt, caller="AnswerLLM", request_id=request.request_id).strip()
-
-        if raw:
-            draft = self._try_parse_draft(raw)
-            if draft is not None:
-                logger.info("AnswerLLM accepted model JSON response")
-                return draft
-
-            logger.info("AnswerLLM retrying once with JSON repair prompt")
-            retry_raw = self._llm.complete(
-                self._build_retry_prompt(prompt, raw),
-                caller="AnswerLLM",
-                request_id=request.request_id,
-            ).strip()
-            if retry_raw:
-                draft = self._try_parse_draft(retry_raw)
-                if draft is not None:
-                    logger.info("AnswerLLM accepted repaired JSON response")
-                    return draft
-            logger.info("AnswerLLM using fallback answer after retry failure")
+        try:
+            draft = self._llm.instruct_complete(
+                prompt=prompt,
+                response_model=LLMAnswerDraft,
+                max_retries=2,
+                timeout=None,
+            )
+            logger.info("AnswerLLM accepted structured model response")
+            return draft
+        except Exception as exc:
+            logger.info("AnswerLLM structured generation failed (%s); using fallback answer", exc.__class__.__name__)
+            logger.exception("AnswerLLM structured generation exception details")
             return self._fallback_draft(request, plan, evidence)
-
-        logger.info("AnswerLLM empty response; using fallback answer")
-        return self._fallback_draft(request, plan, evidence)
 
     def _compact_tool_response(self, item: ToolResponse) -> Dict[str, Any]:
         result = item.result if isinstance(item.result, dict) else {}
@@ -170,34 +137,6 @@ class AnswerLLM:
             "result": compact_result,
             "errors": item.errors[:5],
         }
-
-    def _build_retry_prompt(self, original_prompt: str, raw_response: str) -> str:
-        return json.dumps(
-            {
-                "task": "Repair the previous response into valid JSON only.",
-                "instruction": (
-                    "Return exactly one JSON object matching the LLMAnswerDraft contract. "
-                    "Do not explain. Do not use markdown. Do not include backticks."
-                ),
-                "original_prompt": original_prompt,
-                "previous_invalid_response": raw_response[:3000],
-            },
-            indent=2,
-            default=str,
-        )
-
-    def _try_parse_draft(self, raw: str) -> LLMAnswerDraft | None:
-        candidate = _extract_json_candidate(raw)
-        try:
-            return LLMAnswerDraft.model_validate_json(candidate)
-        except Exception as exc:
-            snippet = raw[:1000].replace("\n", "\\n")
-            logger.info(
-                "AnswerLLM invalid JSON/schema (%s) raw_snippet=%r",
-                exc.__class__.__name__,
-                snippet,
-            )
-            return None
 
     def _fallback_draft(self, request: UserRequest, plan: LedgerMindPlan, evidence: List[ToolResponse]) -> LLMAnswerDraft:
         headline = "Tool-backed financial review generated; review options below."

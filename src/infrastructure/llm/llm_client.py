@@ -6,6 +6,11 @@ import socket
 import time
 import urllib.error
 import urllib.request
+from pydantic import BaseModel
+from typing import TypeVar, Type, Any
+
+T = TypeVar("T", bound=BaseModel)
+
 from logs import get_logger, write_json_log
 
 logger = get_logger("LLMClient")
@@ -13,13 +18,26 @@ logger = get_logger("LLMClient")
 class LLMClient:
     def __init__(
         self,
-        base_url: str | None = None,
         model: str | None = None,
+        base_url: str | None = None,
         timeout_seconds: float | None = None,
     ) -> None:
         self.base_url = (base_url or os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")).rstrip("/")
         self.model = model or os.getenv("OLLAMA_MODEL", "llama3.1:8b")
         self.timeout_seconds = timeout_seconds or float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "60"))
+        self._client = None
+        try:
+            import instructor
+
+            provider_model = self.model if "/" in self.model else f"ollama/{self.model}"
+            instructor_base_url = self.base_url if self.base_url.endswith("/v1") else f"{self.base_url}/v1"
+            self._client = instructor.from_provider(
+                provider_model,
+                base_url=instructor_base_url,
+                mode=instructor.Mode.JSON,
+            )
+        except Exception as exc:
+            logger.exception("LLMClient instructor unavailable; structured calls will use caller fallbacks: %s", exc)
 
     def complete(self, prompt: str, *, caller: str = "LLMClient", request_id: str | None = None) -> str:
         started = time.perf_counter()
@@ -89,3 +107,25 @@ class LLMClient:
         )
         logger.info("LLMClient request complete in %.2fs response_chars=%d", elapsed, len(str(response_text)))
         return response_text.strip() if isinstance(response_text, str) else ""
+
+
+    def instruct_complete(
+        self,
+        prompt: str,
+        response_model: Type[T],
+        *,
+        max_retries: int = 2,
+        timeout: float | None = None,
+        **kwargs: Any,
+    ) -> T:
+        if self._client is None:
+            raise RuntimeError("Instructor client unavailable")
+
+        timeout = timeout or self.timeout_seconds
+        return self._client.create(
+            messages=[{"role": "user", "content": prompt}],
+            response_model=response_model,
+            max_retries=max_retries,
+            timeout=timeout,
+            **kwargs,
+        )

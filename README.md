@@ -37,7 +37,7 @@ Important flow:
 
 Tested setup:
 
-- Python `3.9.x` (current repo setup uses `actualpy==0.17.0`)
+- Python `3.11.x` (recommended baseline)
 - An Actual server instance running (desktop/server)
 - Access to your Actual file via `ACTUAL_SYNC_ID` (or `ACTUAL_FILE`)
 

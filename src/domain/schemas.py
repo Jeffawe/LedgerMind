@@ -134,29 +134,53 @@ class ToolResponse(BaseModel):
 
 
 class PlanAssumptions(BaseModel):
-    date_range: Optional[DateRange] = None
-    currency: Optional[str] = None
+    date_range: Optional[DateRange] = Field(
+        default=None,
+        description="Assumed analysis date range used when planning tool calls.",
+    )
+    currency: Optional[str] = Field(
+        default=None,
+        description="Assumed reporting currency for tool arguments and answer framing (for example, USD).",
+    )
 
 
 class PlanCall(BaseModel):
-    id: str
-    tool: str
-    args: Dict[str, Any] = Field(default_factory=dict)
-    purpose: str
+    id: str = Field(description="Stable step id for this call (for example, s1, s2).")
+    tool: str = Field(description="Exact tool name to execute from the registered tool catalog.")
+    args: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="JSON-serializable arguments for the selected tool.",
+    )
+    purpose: str = Field(description="One-line reason this tool call is needed.")
 
 
 class PlanOutputTarget(BaseModel):
-    response_schema: str
-    focus: List[str] = Field(default_factory=list)
+    response_schema: str = Field(
+        description="Identifier of the downstream response schema to target.",
+    )
+    focus: List[str] = Field(
+        default_factory=list,
+        description="Priority themes to emphasize in the answer stage (for example, spend_reduction, cash_buffer).",
+    )
 
 
 class LedgerMindPlan(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    schema_version: str = Field(default="ledgermind.plan.v1", alias="schema")
-    objective: str
-    assumptions: PlanAssumptions = Field(default_factory=PlanAssumptions)
-    calls: List[PlanCall] = Field(default_factory=list)
-    output: PlanOutputTarget
+    schema_version: str = Field(
+        default="ledgermind.plan.v1",
+        alias="schema",
+        description="Plan schema identifier; must remain ledgermind.plan.v1.",
+    )
+    objective: str = Field(description="Plain-language objective for the plan.")
+    assumptions: PlanAssumptions = Field(
+        default_factory=PlanAssumptions,
+        description="Explicit assumptions the planner used when constructing calls.",
+    )
+    calls: List[PlanCall] = Field(
+        default_factory=list,
+        description="Ordered tool calls to execute for collecting evidence.",
+    )
+    output: PlanOutputTarget = Field(description="Target answer contract and focus areas.")
 
 
 class EvidenceRef(BaseModel):
@@ -216,13 +240,31 @@ class MemoryItem(BaseModel):
 
 
 class LLMAnswerDraft(BaseModel):
-    answer: str
-    bullets: List[str] = Field(default_factory=list)
-    options: List[AnswerOption] = Field(default_factory=list)
-    recommended_action: Optional[RecommendedAction] = None
-    risks_and_tradeoffs: List[str] = Field(default_factory=list)
-    assumptions_and_confidence: Optional[AssumptionsConfidence] = None
-    memory: List[MemoryItem] = Field(default_factory=list)
+    answer: str = Field(description="Primary direct answer to the user request.")
+    bullets: List[str] = Field(
+        default_factory=list,
+        description="Short supporting bullet points grounded in tool evidence.",
+    )
+    options: List[AnswerOption] = Field(
+        default_factory=list,
+        description="Actionable alternatives the user can choose from.",
+    )
+    recommended_action: Optional[RecommendedAction] = Field(
+        default=None,
+        description="Best next action given evidence and policy profile, or null if not applicable.",
+    )
+    risks_and_tradeoffs: List[str] = Field(
+        default_factory=list,
+        description="Key risks, caveats, or tradeoffs the user should consider.",
+    )
+    assumptions_and_confidence: Optional[AssumptionsConfidence] = Field(
+        default=None,
+        description="Assumptions and confidence score for uncertainty transparency.",
+    )
+    memory: List[MemoryItem] = Field(
+        default_factory=list,
+        description="Durable preference/constraint/context items to persist for future requests.",
+    )
     used_tool_calls: List[str] = Field(
         default_factory=list,
         description="Tool names from evidence that the model actively used for reasoning.",
